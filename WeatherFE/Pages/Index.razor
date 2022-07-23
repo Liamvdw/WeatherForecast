@@ -1,0 +1,91 @@
+﻿@page "/"
+@inject HttpClient Http
+@using Newtonsoft.Json;
+
+<h1>Weather Forecast for Japan</h1>
+
+
+@if (weatherForecast == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+<div class="row float-right" style=" margin: 10px;">
+    <button class="btn btn-primary" @onclick="GetWeatherForecast">Refresh</button>
+</div>
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>City/Country</th>
+                <th>Description</th>
+                <th>Temp</th>
+                <th>Max Temp</th>
+                <th>Sunrise</th>
+                <th>Sunset</th>
+            </tr>
+        </thead>
+        <tbody>
+
+            <tr>
+                <td>@ConvertToDateTime(weatherForecast.Dt)</td>
+                <td>@weatherForecast.Name / @weatherForecast.Sys.Country </td>
+                <td>@weatherForecast.Weather[0].Description</td>
+                <td>@RoundTemp(weatherForecast.Main.Temp)°C </td>
+                <td>@RoundTemp(weatherForecast.Main.TempMax)°C </td>
+                <td>@ConvertToTime(weatherForecast.Sys.Sunset) </td>
+                <td>@ConvertToTime(weatherForecast.Sys.Sunrise)</td>
+            </tr>
+        </tbody>
+    </table>
+
+}
+
+@code {
+    private WeatherFE.Model.WeatherModel.Root weatherForecast;
+    private DateTime startDate;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await GetWeatherForecast();
+    }
+
+    public async Task GetWeatherForecast()
+    {
+        weatherForecast = null;
+        var response = await Http.GetStringAsync("https://fcc-weather-api.glitch.me/api/current?lat=35&lon=139");
+        weatherForecast = JsonConvert.DeserializeObject<WeatherFE.Model.WeatherModel.Root>(response);
+    }
+
+    public string ConvertToDateTime(int unixTimeStamp)
+    {
+        var result = DateTimeOffset.FromUnixTimeSeconds((long)unixTimeStamp).Date;
+
+        return $"{result.Day}/{result.Month}/{result.Year}";
+    }
+
+    public double RoundTemp(double value)
+    {
+        return Math.Floor(value);
+    }
+
+    public TimeSpan ConvertToTime(int unixTimeStamp)
+    {
+        return DateTimeOffset.FromUnixTimeSeconds((long)unixTimeStamp).TimeOfDay;
+    }
+
+    public string CallWeatherService()
+    {
+        var startTimeSpan = TimeSpan.Zero;
+        var periodTimeSpan = TimeSpan.FromSeconds(10);
+
+        var timer = new System.Threading.Timer((e) =>
+        {
+            GetWeatherForecast();
+        }, null, startTimeSpan, periodTimeSpan);
+
+        return null;
+    }
+
+}
